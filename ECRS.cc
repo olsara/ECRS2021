@@ -7,6 +7,15 @@
 //            1/14/2021, Hexc, Jarred and Marcus: update the ECRS simulation for the newer GEANT4 release and Linux OS
 //            2/25/2021, Hexc, Jarred, Marcus, Zachary, Jack, Ernesto: Added a command line option for number of threads to run.
 //            3/16/2021, Hexc: Update the code for running batch mode
+//            9/25/2026, Olesya Sarajlic: Parallelized the simulation. Enabled Geant4
+//                      event-level multithreading through G4RunManagerFactory (which
+//                      instantiates G4MTRunManager when Geant4 is built with
+//                      multithreading) and wired up the worker-thread count: the
+//                      optional 3rd command-line argument sets the number of threads,
+//                      otherwise all available CPU cores are used. Events are now
+//                      distributed across worker threads and the per-thread
+//                      G4AnalysisManager ntuples are merged automatically by the
+//                      master thread. See the SetNumberOfThreads() block below.
 //
 #include "G4Types.hh"
 
@@ -24,6 +33,12 @@
 #include "G4UIExecutive.hh"
 
 #include "Randomize.hh"
+
+// 9/25/2026, Olesya Sarajlic: needed for querying the CPU core count and for
+//            std::max / atoi used when configuring the number of worker threads.
+#include "G4Threading.hh"
+#include <algorithm>
+#include <cstdlib>
 
 // 4/5/2015
 #include "QGSP_BERT_HP.hh"
@@ -55,9 +70,11 @@
 namespace {
   void PrintUsage() {
     G4cerr << " Usage: " << G4endl;
-    G4cerr << " LoopPanel [-m macro ] [-u UIsession] [-t nThreads]" << G4endl;
-    G4cerr << "   note: -t option is available only for multi-threaded mode."
-	   << G4endl;
+    G4cerr << " ECRS <seedIndex> <macroFile> [nThreads]" << G4endl;
+    G4cerr << "   seedIndex : line index into ECRS_500kRand.txt for the RNG seed" << G4endl;
+    G4cerr << "   macroFile : Geant4 macro to execute in batch mode" << G4endl;
+    G4cerr << "   nThreads  : (optional) number of worker threads to run in"     << G4endl;
+    G4cerr << "               parallel; defaults to all available CPU cores."    << G4endl;
   }
 }
 
@@ -106,7 +123,7 @@ int main(int argc, char** argv) {
   G4long ECRS_Rand[10000];
   if (argc == 1) {
     seed_index = (int)rand();  
-  } else if ((argc == 2) || (argc == 3)) {
+  } else if ((argc >= 2) && (argc <= 4)) {   // 9/25/2026, Olesya Sarajlic: allow optional argv[3]=nThreads
     std::ifstream ECRS_RandNumFile("ECRS_500kRand.txt");
     for ( int i = 0; i < 10000; i++) {
       ECRS_RandNumFile >> ECRS_Rand[i];
@@ -156,7 +173,42 @@ int main(int argc, char** argv) {
   //
   auto* runManager =
     G4RunManagerFactory::CreateRunManager(G4RunManagerType::Default);
-  
+
+  // 9/25/2026, Olesya Sarajlic: PARALLELIZATION
+  // -------------------------------------------------------------------------
+  // The simulation was previously run serially (one event at a time on a
+  // single core). Geant4 supports event-level parallelism: each worker thread
+  // processes a different subset of the events concurrently, and the per-thread
+  // G4AnalysisManager ntuples are merged automatically by the master thread at
+  // the end of the run, so the physics results are unchanged.
+  //
+  // G4RunManagerFactory::CreateRunManager(Default) already returns a
+  // G4MTRunManager when Geant4 was built with multithreading support (and a
+  // sequential G4RunManager otherwise). Here we set how many worker threads to
+  // use: an optional 3rd command-line argument (argv[3]) overrides the default
+  // of "all available hardware cores". In a sequential Geant4 build
+  // SetNumberOfThreads() is simply a no-op.
+  G4int nThreads = G4Threading::G4GetNumberOfCores();
+  if (argc >= 4) {
+    nThreads = std::max(1, atoi(argv[3]));
+  }
+  runManager->SetNumberOfThreads(nThreads);
+  G4cout << "ECRS parallelization: requesting " << nThreads
+         << " worker thread(s) (detected cores: "
+         << G4Threading::G4GetNumberOfCores() << ")." << G4endl;
+  //
+  // 9/25/2026, Olesya Sarajlic: THREAD-SAFETY NOTE (please read)
+  // The event loop, physics and G4AnalysisManager output are all thread-safe.
+  // HOWEVER, the analytic magnetic-field models used by ECRSMagneticField
+  // (t89c_, t89c_boberg_, mcos_t96_01_, t01_01_, igrf_to_cc_) keep their state
+  // in global Fortran COMMON blocks (geopack_, igrfcc_, ...). Those globals are
+  // shared across worker threads, so concurrent field evaluations can race.
+  // To be certain MT results match the serial run, the COMMON blocks must be
+  // made thread-local (e.g. declare them "thread_local"/__thread, or guard the
+  // field call), or validated to be read-only after initialization. Until that
+  // is done, run with nThreads = 1 for production output, or verify a small MT
+  // run against the serial result first.
+  // -------------------------------------------------------------------------
   //
   // Mandatory initialization classes
   //
