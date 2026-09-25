@@ -7,7 +7,7 @@
 //            1/14/2021, Hexc, Jarred and Marcus: update the ECRS simulation for the newer GEANT4 release and Linux OS
 //            2/25/2021, Hexc, Jarred, Marcus, Zachary, Jack, Ernesto: Added a command line option for number of threads to run.
 //            3/16/2021, Hexc: Update the code for running batch mode
-//            9/25/2026, Olesya Sarajlic: Parallelized the simulation. Enabled Geant4
+//            9/25/2026: Parallelized the simulation. Enabled Geant4
 //                      event-level multithreading through G4RunManagerFactory (which
 //                      instantiates G4MTRunManager when Geant4 is built with
 //                      multithreading) and wired up the worker-thread count: the
@@ -34,7 +34,7 @@
 
 #include "Randomize.hh"
 
-// 9/25/2026, Olesya Sarajlic: needed for querying the CPU core count and for
+// 9/25/2026: needed for querying the CPU core count and for
 //            std::max / atoi used when configuring the number of worker threads.
 #include "G4Threading.hh"
 #include <algorithm>
@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
   G4long ECRS_Rand[10000];
   if (argc == 1) {
     seed_index = (int)rand();  
-  } else if ((argc >= 2) && (argc <= 4)) {   // 9/25/2026, Olesya Sarajlic: allow optional argv[3]=nThreads
+  } else if ((argc >= 2) && (argc <= 4)) {   // 9/25/2026: allow optional argv[3]=nThreads
     std::ifstream ECRS_RandNumFile("ECRS_500kRand.txt");
     for ( int i = 0; i < 10000; i++) {
       ECRS_RandNumFile >> ECRS_Rand[i];
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
   auto* runManager =
     G4RunManagerFactory::CreateRunManager(G4RunManagerType::Default);
 
-  // 9/25/2026, Olesya Sarajlic: PARALLELIZATION
+  // 9/25/2026: PARALLELIZATION
   // -------------------------------------------------------------------------
   // The simulation was previously run serially (one event at a time on a
   // single core). Geant4 supports event-level parallelism: each worker thread
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
          << " worker thread(s) (detected cores: "
          << G4Threading::G4GetNumberOfCores() << ")." << G4endl;
   //
-  // 9/25/2026, Olesya Sarajlic: THREAD-SAFETY NOTE (please read)
+  // 9/25/2026: THREAD-SAFETY NOTE (please read)
   // The event loop, physics and G4AnalysisManager output are all thread-safe.
   // HOWEVER, the analytic magnetic-field models used by ECRSMagneticField
   // (t89c_, t89c_boberg_, mcos_t96_01_, t01_01_, igrf_to_cc_) keep their state
