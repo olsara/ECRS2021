@@ -5,6 +5,19 @@ cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
 project(ECRS2021)
 
 #----------------------------------------------------------------------------
+# 9/28/2026: Default to an optimized Release build unless the user overrides it.
+# A Geant4 application configured with an empty build type is compiled with no
+# optimization (-O0), which typically runs several times slower. Build with
+# e.g. -DCMAKE_BUILD_TYPE=Debug to override.
+#
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING
+      "Build type: Release, Debug, RelWithDebInfo or MinSizeRel" FORCE)
+  message(STATUS "No build type specified - defaulting to Release (optimized).")
+endif()
+
+
+#----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
 # You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui
 # to build a batch mode only executable
@@ -34,7 +47,13 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 # Add the executable, and link it to the Geant4 libraries
 #
 add_executable(ECRS2021 ECRS.cc ${sources} ${headers})
-target_link_libraries(ECRS2021 ${Geant4_LIBRARIES}  /home/hexc/G4Work/magnetocosmics/fortran/lib/libFortranMagField.a)
+# 9/28/2026: The magnetocosmics magnetic-field library path used to be hard-coded
+# to a specific user's home directory. Make it an overridable cache variable so
+# the project builds on any machine: configure with
+#   -DMAGCOS_FIELD_LIB=/path/to/magnetocosmics/fortran/lib/libFortranMagField.a
+set(MAGCOS_FIELD_LIB "/home/hexc/G4Work/magnetocosmics/fortran/lib/libFortranMagField.a"
+    CACHE FILEPATH "Path to the magnetocosmics libFortranMagField.a")
+target_link_libraries(ECRS2021 ${Geant4_LIBRARIES} ${MAGCOS_FIELD_LIB})
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we

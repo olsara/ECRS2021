@@ -462,16 +462,24 @@ G4double ECRSDetectorConstruction::GetAirDensity(G4double hin, G4int option)
       //return density;
     } 
     else {
-      G4cout << "The atm hieght is WRONG! " << G4endl;
-      exit(1);
+            // 9/28/2026: replaced exit(1) with G4Exception for clean termination.
+      G4ExceptionDescription ed;
+      ed << "Atmospheric layer height " << h << " is outside the valid range.";
+      G4Exception("ECRSDetectorConstruction::atmModel", "ECRS_ATM001",
+                  FatalException, ed);
+      return 0.;
     }
 
     if(opt==0) return density;
     else if(opt==1) return press;
     else if(opt==2) return temp;
     else {
-      G4cout << "WRONG option!! " << G4endl;
-      exit(1);
+            // 9/28/2026: replaced exit(1) with G4Exception for clean termination.
+      G4ExceptionDescription ed;
+      ed << "Invalid option " << opt << " requested from the atmosphere model.";
+      G4Exception("ECRSDetectorConstruction::atmModel", "ECRS_ATM002",
+                  FatalException, ed);
+      return 0.;
     }
     
   }
@@ -498,8 +506,12 @@ G4double ECRSDetectorConstruction::GetAirDensity(G4double hin, G4int option)
       G4cout << " In function: density = " << density << G4endl;
       return density;
     } else {
-      G4cout << "The atm hieght is WRONG! " << G4endl;
-      exit(1);
+            // 9/28/2026: replaced exit(1) with G4Exception for clean termination.
+      G4ExceptionDescription ed;
+      ed << "Atmospheric layer height " << h << " is outside the valid range.";
+      G4Exception("ECRSDetectorConstruction::atmModel", "ECRS_ATM001",
+                  FatalException, ed);
+      return 0.;
     }
   }
   
@@ -526,8 +538,12 @@ G4double ECRSDetectorConstruction::GetAirDensity(G4double hin, G4int option)
       G4cout << " In function: density = " << density << G4endl;
       return density;
     } else {
-      G4cout << "The atm hieght is WRONG! " << G4endl;
-      exit(1);
+            // 9/28/2026: replaced exit(1) with G4Exception for clean termination.
+      G4ExceptionDescription ed;
+      ed << "Atmospheric layer height " << h << " is outside the valid range.";
+      G4Exception("ECRSDetectorConstruction::atmModel", "ECRS_ATM001",
+                  FatalException, ed);
+      return 0.;
     }
   }
 }

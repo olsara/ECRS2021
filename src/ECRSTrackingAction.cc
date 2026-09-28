@@ -10,6 +10,7 @@
 
 #include "ECRSTrackingAction.hh"
 #include "ECRSTrackingMessenger.hh"
+#include "ECRSParticleFlag.hh"   // 9/28/2026: shared particle-name -> flag lookup
 
 #include "G4UserTrackingAction.hh"
 #include "G4ParticleDefinition.hh"
@@ -52,30 +53,8 @@ void ECRSTrackingAction::PreUserTrackingAction(const G4Track* aTrack)
     // find and set event ID
     G4int evtID = evt_action->getCurrentEventID();
     
-    G4int flagParticle = 99;   // Initialize 
+    G4int flagParticle = ECRSParticleFlag(particleName);   // 9/28/2026: shared lookup (was a 17-way if/else chain)
 
-    if (particleName == "proton") { flagParticle = 1; }
-    else if (particleName == "neutron")  { flagParticle = 2; }
-    else if (particleName == "mu+") { flagParticle = 3; }
-    else if (particleName == "mu-") { flagParticle = 4; }
-    else if (particleName == "e+") { flagParticle = 5; }
-    else if (particleName == "e-") { flagParticle = 6; }
-    else if (particleName == "gamma") {flagParticle = 7; }
-    else if (particleName == "pi+") { flagParticle = 8; }
-    else if (particleName == "pi-") { flagParticle = 9; }
-    else if (particleName == "C12")  { flagParticle = 10; }
-    else if (particleName == "C13")  { flagParticle = 11; }
-    else if (particleName == "He3")  { flagParticle = 12; }
-    else if (particleName == "deutron") { flagParticle = 13; }
-    else if (particleName == "N14") { flagParticle = 14; }
-    else if (particleName == "anti_proton") { flagParticle = 15; }
-    else if (particleName == "anti_neutron") { flagParticle = 16; }
-    else if (particleName == "triton") { flagParticle = 17; }
-    else 
-      {
-	flagParticle = 99;
-      }
-    
     /* We comment this text output since the data is stored in the tracking ntuple
     fileOut->fout << 4  << "  "  << particle->GetParticleName() <<"  "<<PID<<"  " << "  " <<  KE/MeV  << "  "
 		  << position.getX()/m  << "  " << position.getY()/m  << "  " <<  position.getZ()/m  << "   " 

@@ -31,7 +31,7 @@
 #include "BSEquationInG4.hh"
 
 #include <iostream>
-#include <strstream>
+#include <sstream>   // 9/28/2026: replaced deprecated <strstream> (removed in C++20)
 
 using namespace CLHEP;
 
@@ -476,7 +476,7 @@ void ECRSMagneticField::ReadIgrfTable(G4String nameFile)
   G4cout << Line << G4endl;
  
   char ch;
-  std::strstream astream;
+  std::stringstream astream;   // 9/28/2026: was std::strstream (deprecated)
   File_Input.get(ch);
   while (ch != '\n') {
     astream<<ch;
@@ -486,10 +486,13 @@ void ECRSMagneticField::ReadIgrfTable(G4String nameFile)
   G4String str1;
   astream>>str1>>str1>>str1;
   if (str1!="m"){
-  	G4cout<<"The environment variable IGRF_TABLE is not defined correctly" <<std::endl;
-  	G4cout<<"The program will be interrupted"<<std::endl;
-	exit(0);
-	
+	// 9/28/2026: use G4Exception instead of exit(0) so the run terminates
+	// cleanly (destructors, MT worker synchronisation) with a clear message.
+	G4ExceptionDescription ed;
+	ed << "IGRF_TABLE file '" << nameFile << "' is not formatted as expected "
+	   << "(expected an 'm' column header, found '" << str1 << "').";
+	G4Exception("ECRSMagneticField::ReadIgrfTable", "ECRS_IGRF001",
+		    FatalException, ed);
   }
   G4double year=0.;
   while (!astream.eof() && year >= 0.){
@@ -779,7 +782,7 @@ G4ThreeVector ECRSMagneticField::GetIGRF(G4ThreeVector pos) const
    
    
   float cos_phi = std::cos(phi);
-  float two_cos_phi = std::cos(phi) * 2.;
+  float two_cos_phi = cos_phi * 2.;   // 9/28/2026: reuse cos_phi (was recomputing std::cos(phi))
   float sin_phi = std::sin(phi);
   float cos_theta = std::cos(theta);
   float sin_theta = std::sin(theta);
@@ -789,17 +792,22 @@ G4ThreeVector ECRSMagneticField::GetIGRF(G4ThreeVector pos) const
   // a_n = (1 /r) ^ (n+1)
   // da_n_dth = -(a_n1) * n+1 
  
-  std::vector<float> a;
-  std::vector<float> da_dr;
+  // 9/28/2026: Use fixed-size stack arrays instead of std::vector to avoid a
+  // heap allocation (and vector growth) on every field evaluation - GetIGRF is
+  // called from GetFieldValue on the integration hot path. nm_igrf is <= 13.
+  const G4int kMaxHarm = 16;
+  float a[kMaxHarm];
+  float da_dr[kMaxHarm];
   G4int n;
   G4int old_nm_igrf =nm_igrf;
   if (ReferenceDate.year <2000. && nm_igrf >10) old_nm_igrf =10; 	
+  if (old_nm_igrf > kMaxHarm) old_nm_igrf = kMaxHarm;
    
    
   for ( n=1;n<old_nm_igrf+1;n++){
     	p *= pp;
-     	a.push_back(p);
-     	da_dr.push_back( -p * float (n+1) );
+     	a[n-1] = p;
+     	da_dr[n-1] = -p * float (n+1);
   }
     
   // case where m=0, p_1_0 =1.
@@ -1164,7 +1172,7 @@ bool ECRSMagneticField::IGRFOutsideMagnetosphere( G4ThreeVector pos)  const
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ECRSMagneticField::TSY89OutsideMagnetosphere( G4ThreeVector pos) const
-{ //model from Kobel PhD "Zu die magnetosphärischen Effekten der kosmischen
+{ //model from Kobel PhD "Zu die magnetosphï¿½rischen Effekten der kosmischen
   //  Strahlung"
   G4double a=-0.0545;
   G4double b_iopt[]={11.7,11.1,10.8,10.4,10.4,10.2,10.2};

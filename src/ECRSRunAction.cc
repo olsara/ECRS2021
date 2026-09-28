@@ -35,6 +35,11 @@ void ECRSRunAction::BeginOfRunAction(const G4Run* aRun)
   
   G4cout << "Using " << analysisManager->GetType() << " analysis manager" << G4endl;
 
+  // 9/28/2026: Merge the per-worker-thread ntuples into a single output file
+  // when running multithreaded. Without this each worker writes its own
+  // ECRS2021_Shower_tN.root and the results are not combined.
+  analysisManager->SetNtupleMerging(true);
+
   // Create directories  
   //analysisManager->SetHistoDirectoryName("histograms");
   //analysisManager->SetNtupleDirectoryName("ntuple");

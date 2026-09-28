@@ -11,6 +11,7 @@
 #include "ECRSSteppingMessenger.hh"
 #include "ECRSDetectorConstruction.hh"
 #include "ECRSSingleton.hh"
+#include "ECRSParticleFlag.hh"   // 9/28/2026: shared particle-name -> flag lookup
 
 #include "G4StepPoint.hh"
 #include "G4ParticleDefinition.hh"
@@ -63,8 +64,7 @@ void ECRSSteppingAction::UserSteppingAction(const G4Step* aStep)
       G4double Proper_time = aTrack->GetProperTime();
       KE = aTrack->GetKineticEnergy();
       particle = aTrack->GetDefinition();
-      G4int PID = particle->GetPDGEncoding();
-      particleName = particle->GetParticleName();
+      particleName = particle->GetParticleName();   // 9/28/2026: removed now-unused PID (only used by the deleted fout write)
 
       // find and set event ID
       G4int evtID = evt_action->getCurrentEventID();
@@ -72,39 +72,15 @@ void ECRSSteppingAction::UserSteppingAction(const G4Step* aStep)
       G4ThreeVector position = aTrack->GetPosition();
       G4ThreeVector mom = aTrack->GetMomentum();
       
-      // For now we are going to write out the hits information close to the 
-      // surface of the earth.
-      // We comment this text output since the data is stored in the hits ntuple 
-      fileOut->fout << 0 << "  " <<particle->GetParticleName() <<"  "<<PID<<"  "<< "  " << KE/MeV << "  "  
-		    << position.getX()/m << "  " << position.getY()/m << "  "
-		    << position.getZ()/m <<  "   "  << Global_time/ms << "   "  
-		    << Local_time/ms << "   "  << Proper_time/ms << G4endl;      
-      
+      // 9/28/2026: Removed a per-hit write to the shared ECRSSingleton::fout
+      // stream. That stream is never opened, so the write produced no output,
+      // and being a shared global it was a data race under multithreading.
+      // The same information is already stored in the hits ntuple below.
+      // (Was: fileOut->fout << 0 << "  " << particle->GetParticleName() << ... )
 
-      G4int flagParticle = 99;   // Initialize 
-            
-      if (particleName == "proton") { flagParticle = 1; }
-      else if (particleName == "neutron")  { flagParticle = 2; }
-      else if (particleName == "mu+") { flagParticle = 3; }
-      else if (particleName == "mu-") { flagParticle = 4; }
-      else if (particleName == "e+") { flagParticle = 5; }
-      else if (particleName == "e-") { flagParticle = 6; }
-      else if (particleName == "gamma") {flagParticle = 7; }
-      else if (particleName == "pi+") { flagParticle = 8; }
-      else if (particleName == "pi-") { flagParticle = 9; }
-      else if (particleName == "C12")  { flagParticle = 10; }
-      else if (particleName == "C13")  { flagParticle = 11; }
-      else if (particleName == "He3")  { flagParticle = 12; }
-      else if (particleName == "deutron") { flagParticle = 13; }
-      else if (particleName == "N14") { flagParticle = 14; }
-      else if (particleName == "anti_proton") { flagParticle = 15; }
-      else if (particleName == "anti_neutron") { flagParticle = 16; }
-      else if (particleName == "triton") { flagParticle = 17; }
-      else 
-	{
-	  flagParticle = 99;
-	}
-      
+
+      G4int flagParticle = ECRSParticleFlag(particleName);   // 9/28/2026: shared lookup (was a 17-way if/else chain)
+
       // get analysis manager
       G4AnalysisManager* analysisManager = G4AnalysisManager::Instance();
       
